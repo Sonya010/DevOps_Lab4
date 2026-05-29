@@ -3,7 +3,7 @@ terraform {
   required_providers {
     libvirt = {
       source  = "dmacvicar/libvirt"
-      version = "~> 0.7"
+      version = "~> 0.9"
     }
   }
 }
@@ -15,48 +15,79 @@ provider "libvirt" {
 resource "libvirt_pool" "mywebapp" {
   name = "mywebapp-pool"
   type = "dir"
-  path = var.pool_path
+  target {
+    path = var.pool_path
+  }
 }
 
 resource "libvirt_volume" "base" {
-  name   = "ubuntu-base.qcow2"
-  pool   = libvirt_pool.mywebapp.name
-  source = var.ubuntu_image_path
-  format = "qcow2"
+  name = "ubuntu-base.qcow2"
+  pool = libvirt_pool.mywebapp.name
+  target {
+    format {
+      type = "qcow2"
+    }
+  }
+  create {
+    file {
+      source_file = var.ubuntu_image_path
+    }
+  }
 }
 
 resource "libvirt_volume" "worker" {
-  name           = "worker.qcow2"
-  pool           = libvirt_pool.mywebapp.name
-  base_volume_id = libvirt_volume.base.id
-  size           = 10737418240
+  name = "worker.qcow2"
+  pool = libvirt_pool.mywebapp.name
+  capacity = 10737418240
+  target {
+    format {
+      type = "qcow2"
+    }
+  }
+  backing_store {
+    path = libvirt_volume.base.path
+    format {
+      type = "qcow2"
+    }
+  }
 }
 
 resource "libvirt_volume" "db" {
-  name           = "db.qcow2"
-  pool           = libvirt_pool.mywebapp.name
-  base_volume_id = libvirt_volume.base.id
-  size           = 10737418240
+  name = "db.qcow2"
+  pool = libvirt_pool.mywebapp.name
+  capacity = 10737418240
+  target {
+    format {
+      type = "qcow2"
+    }
+  }
+  backing_store {
+    path = libvirt_volume.base.path
+    format {
+      type = "qcow2"
+    }
+  }
 }
 
 resource "libvirt_network" "mywebapp" {
   name      = "mywebapp-net"
-  mode      = "nat"
-  addresses = ["192.168.100.0/24"]
   autostart = true
-
-  dhcp {
-    enabled = true
+  forward {
+    mode = "nat"
   }
-
-  dns {
-    enabled = true
+  ips {
+    address = "192.168.100.1"
+    netmask = "255.255.255.0"
+    dhcp {}
   }
 }
 
 resource "libvirt_cloudinit_disk" "worker" {
   name      = "worker-cloudinit.iso"
-  pool      = libvirt_pool.mywebapp.name
+  meta_data = yamlencode({
+    instance-id    = "worker"
+    local-hostname = "worker"
+  })
   user_data = templatefile("${path.module}/cloud-init/worker.yml", {
     ssh_public_key = var.ssh_public_key
   })
@@ -64,7 +95,10 @@ resource "libvirt_cloudinit_disk" "worker" {
 
 resource "libvirt_cloudinit_disk" "db" {
   name      = "db-cloudinit.iso"
-  pool      = libvirt_pool.mywebapp.name
+  meta_data = yamlencode({
+    instance-id    = "db"
+    local-hostname = "db"
+  })
   user_data = templatefile("${path.module}/cloud-init/db.yml", {
     ssh_public_key = var.ssh_public_key
   })
@@ -72,58 +106,124 @@ resource "libvirt_cloudinit_disk" "db" {
 
 resource "libvirt_domain" "worker" {
   name   = "worker"
-  memory = "2048"
+  type   = "kvm"
+  memory = 2097152
   vcpu   = 2
 
-  cloudinit = libvirt_cloudinit_disk.worker.id
-
-  disk {
-    volume_id = libvirt_volume.worker.id
+  os {
+    type      = "hvm"
+    type_arch = "aarch64"
   }
 
-  network_interface {
-    network_id     = libvirt_network.mywebapp.id
-    wait_for_lease = true
-  }
-
-  console {
-    type        = "pty"
-    target_type = "serial"
-    target_port = "0"
-  }
-
-  graphics {
-    type        = "spice"
-    listen_type = "address"
-    autoport    = true
+  devices {
+    disks {
+      target {
+        dev = "vda"
+        bus = "virtio"
+      }
+      source {
+        volume {
+          pool   = libvirt_pool.mywebapp.name
+          volume = libvirt_volume.worker.name
+        }
+      }
+    }
+    disks {
+      device = "cdrom"
+      target {
+        dev = "sda"
+        bus = "scsi"
+      }
+      source {
+        file {
+          file = libvirt_cloudinit_disk.worker.path
+        }
+      }
+    }
+    interfaces {
+      source {
+        network {
+          network = libvirt_network.mywebapp.name
+        }
+      }
+      model {
+        type = "virtio"
+      }
+      wait_for_ip {}
+    }
+    consoles {
+      target {
+        type = "serial"
+        port = "0"
+      }
+    }
+    graphics {
+      type   = "spice"
+      listen {
+        type = "address"
+      }
+    }
   }
 }
 
 resource "libvirt_domain" "db" {
   name   = "db"
-  memory = "2048"
+  type   = "kvm"
+  memory = 2097152
   vcpu   = 2
 
-  cloudinit = libvirt_cloudinit_disk.db.id
-
-  disk {
-    volume_id = libvirt_volume.db.id
+  os {
+    type      = "hvm"
+    type_arch = "aarch64"
   }
 
-  network_interface {
-    network_id     = libvirt_network.mywebapp.id
-    wait_for_lease = true
-  }
-
-  console {
-    type        = "pty"
-    target_type = "serial"
-    target_port = "0"
-  }
-
-  graphics {
-    type        = "spice"
-    listen_type = "address"
-    autoport    = true
+  devices {
+    disks {
+      target {
+        dev = "vda"
+        bus = "virtio"
+      }
+      source {
+        volume {
+          pool   = libvirt_pool.mywebapp.name
+          volume = libvirt_volume.db.name
+        }
+      }
+    }
+    disks {
+      device = "cdrom"
+      target {
+        dev = "sda"
+        bus = "scsi"
+      }
+      source {
+        file {
+          file = libvirt_cloudinit_disk.db.path
+        }
+      }
+    }
+    interfaces {
+      source {
+        network {
+          network = libvirt_network.mywebapp.name
+        }
+      }
+      model {
+        type = "virtio"
+      }
+      wait_for_ip {}
+    }
+    consoles {
+      target {
+        type = "serial"
+        port = "0"
+      }
+    }
+    graphics {
+      type   = "spice"
+      listen {
+        type = "address"
+      }
+    }
   }
 }
