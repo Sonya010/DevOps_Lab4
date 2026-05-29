@@ -78,7 +78,15 @@ resource "libvirt_network" "mywebapp" {
   ips = [{
     address = "192.168.100.1"
     netmask = "255.255.255.0"
-    dhcp    = {}
+    dhcp = {
+      enabled = true
+      ranges = [
+        {
+          start = "192.168.100.100"
+          end   = "192.168.100.200"
+        }
+      ]
+    }
   }]
 }
 
@@ -108,7 +116,7 @@ resource "libvirt_domain" "worker" {
   name   = "worker"
   type   = "kvm"
   memory = 2097152
-  vcpu   = 2
+  vcpu   = 1
 
   os = {
     type         = "hvm"
@@ -117,10 +125,18 @@ resource "libvirt_domain" "worker" {
     firmware     = "efi"
     firmware_info = {
       features = [
-        { name = "secure-boot", enabled = "no" },
-        { name = "enrolled-keys", enabled = "no" }
+        { name = "enrolled-keys", enabled = "no" },
+        { name = "secure-boot", enabled = "no" }
       ]
     }
+  }
+
+  cpu = {
+    mode = "host-passthrough"
+  }
+
+  features = {
+    acpi = true
   }
 
   devices = {
@@ -142,14 +158,13 @@ resource "libvirt_domain" "worker" {
         }
       },
       {
-        device = "cdrom"
         driver = {
           name = "qemu"
           type = "raw"
         }
         target = {
-          dev = "sda"
-          bus = "scsi"
+          dev = "vdb"
+          bus = "virtio"
         }
         source = {
           file = {
@@ -186,7 +201,7 @@ resource "libvirt_domain" "db" {
   name   = "db"
   type   = "kvm"
   memory = 2097152
-  vcpu   = 2
+  vcpu   = 1
 
   os = {
     type         = "hvm"
@@ -195,10 +210,18 @@ resource "libvirt_domain" "db" {
     firmware     = "efi"
     firmware_info = {
       features = [
-        { name = "secure-boot", enabled = "no" },
-        { name = "enrolled-keys", enabled = "no" }
+        { name = "enrolled-keys", enabled = "no" },
+        { name = "secure-boot", enabled = "no" }
       ]
     }
+  }
+
+  cpu = {
+    mode = "host-passthrough"
+  }
+
+  features = {
+    acpi = true
   }
 
   devices = {
@@ -220,14 +243,13 @@ resource "libvirt_domain" "db" {
         }
       },
       {
-        device = "cdrom"
         driver = {
           name = "qemu"
           type = "raw"
         }
         target = {
-          dev = "sda"
-          bus = "scsi"
+          dev = "vdb"
+          bus = "virtio"
         }
         source = {
           file = {

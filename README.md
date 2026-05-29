@@ -61,13 +61,19 @@ client  →  | nginx (0.0.0.0:80) → app (127.0.0.1:8000) | → | PostgreSQL:54
 sudo apt update
 sudo apt install -y qemu-kvm libvirt-daemon-system virtinst bridge-utils
 sudo apt install -y terraform ansible
+ansible-galaxy collection install community.postgresql community.general
 ```
 
 Завантажити Ubuntu Cloud Image:
 
 ```bash
-wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img \
-  -O /var/lib/libvirt/images/ubuntu-22.04-server-cloudimg-amd64.img
+# Для ARM64 (Apple Silicon Mac + UTM):
+sudo wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-arm64.img \
+  -O /var/lib/libvirt/images/ubuntu-22.04-server-cloudimg-arm64.img
+
+# Для AMD64 (звичайний x86_64 Linux):
+# sudo wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.img \
+#   -O /var/lib/libvirt/images/ubuntu-22.04-server-cloudimg-amd64.img
 ```
 
 Згенерувати SSH-ключ (якщо ще немає):
@@ -76,16 +82,20 @@ wget https://cloud-images.ubuntu.com/jammy/current/jammy-server-cloudimg-amd64.i
 ssh-keygen -t rsa -b 4096 -f ~/.ssh/id_rsa -N ""
 ```
 
+> **Примітка:** Цей проєкт розроблявся на Apple Silicon Mac з UTM (ARM64 nested KVM).
+> Terraform конфігурація (`main.tf`) налаштована для архітектури `aarch64`.
+> Для запуску на x86_64 хості потрібно змінити в `terraform/main.tf`:
+> - `type_arch` з `"aarch64"` на `"x86_64"`
+> - `type_machine` з `"virt"` на `"pc"`
+> - Видалити блок `firmware_info` (secure-boot налаштування специфічне для ARM64 EFI)
+> - Змінити `firmware` з `"efi"` на потрібний, або видалити цей рядок
+
 ## Етап 1: Terraform — створення ВМ
 
 ```bash
 cd terraform
-
 terraform init
-
-terraform apply \
-  -var "ssh_public_key=$(cat ~/.ssh/id_rsa.pub)" \
-  -var "ubuntu_image_path=/var/lib/libvirt/images/ubuntu-22.04-server-cloudimg-amd64.img"
+terraform apply -var "ssh_public_key=$(cat ~/.ssh/id_rsa.pub)"
 ```
 
 Після успішного виконання Terraform виведе IP-адреси обох ВМ:
