@@ -1,0 +1,9 @@
+[Unit]
+Description=Socket for My Web App
+
+[Socket]
+ListenStream=8000
+Service=mywebapp.service
+
+[Install]
+WantedBy=sockets.target

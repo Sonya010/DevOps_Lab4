@@ -1,0 +1,10 @@
+{
+  "port": 8000,
+  "db": {
+    "user": "student",
+    "host": "db",
+    "database": "tasktracker",
+    "password": "yourpassword",
+    "port": 5432
+  }
+}

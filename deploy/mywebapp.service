@@ -1,0 +1,17 @@
+[Unit]
+Description=My Web App Service
+Requires=mywebapp.socket
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=app
+Group=app
+WorkingDirectory=/opt/mywebapp
+Environment=NODE_ENV=production
+ExecStartPre=/usr/bin/node /opt/mywebapp/migrate.js
+ExecStart=/usr/bin/node /opt/mywebapp/app.js
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

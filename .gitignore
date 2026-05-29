@@ -1,0 +1,12 @@
+.DS_Store
+node_modules/
+npm-debug.log*
+logs/
+*.log
+*.pdf
+*.docx
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
+*.retry
