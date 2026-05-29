@@ -115,6 +115,12 @@ resource "libvirt_domain" "worker" {
     type_arch    = "aarch64"
     type_machine = "virt"
     firmware     = "efi"
+    firmware_info = {
+      features = [
+        { name = "secure-boot", enabled = "no" },
+        { name = "enrolled-keys", enabled = "no" }
+      ]
+    }
   }
 
   devices = {
@@ -187,6 +193,12 @@ resource "libvirt_domain" "db" {
     type_arch    = "aarch64"
     type_machine = "virt"
     firmware     = "efi"
+    firmware_info = {
+      features = [
+        { name = "secure-boot", enabled = "no" },
+        { name = "enrolled-keys", enabled = "no" }
+      ]
+    }
   }
 
   devices = {
