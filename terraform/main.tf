@@ -29,8 +29,8 @@ resource "libvirt_volume" "base" {
     }
   }
   create = {
-    file = {
-      source_file = var.ubuntu_image_path
+    content = {
+      url = "file://${var.ubuntu_image_path}"
     }
   }
 }
