@@ -1,0 +1,13 @@
+---
+- name: Create teacher user
+  ansible.builtin.user:
+    name: teacher
+    shell: /bin/bash
+    create_home: true
+    password: "{{ '12345678' | password_hash('sha512') }}"
+    groups: sudo
+    append: true
+
+- name: Force teacher password change on first login
+  ansible.builtin.command: chage -d 0 teacher
+  changed_when: false
