@@ -1,0 +1,95 @@
+---
+- name: Install Node.js
+  ansible.builtin.apt:
+    name:
+      - nodejs
+      - npm
+      - git
+    state: present
+    update_cache: true
+
+- name: Create app user
+  ansible.builtin.user:
+    name: app
+    system: true
+    shell: /bin/bash
+    create_home: true
+
+- name: Create operator user
+  ansible.builtin.user:
+    name: operator
+    shell: /bin/bash
+    create_home: true
+    password: "{{ '12345678' | password_hash('sha512') }}"
+
+- name: Force operator password change on first login
+  ansible.builtin.command: chage -d 0 operator
+  changed_when: false
+
+- name: Configure operator sudo permissions
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/operator
+    content: |
+      operator ALL=(ALL) NOPASSWD: /usr/bin/systemctl start mywebapp.service, /usr/bin/systemctl stop mywebapp.service, /usr/bin/systemctl restart mywebapp.service, /usr/bin/systemctl status mywebapp.service, /usr/bin/systemctl reload nginx
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: Clone application repository
+  ansible.builtin.git:
+    repo: "https://github.com/Sonya010/DevOps_Lab4.git"
+    dest: /opt/mywebapp
+    version: main
+    force: true
+  become_user: app
+
+- name: Install npm dependencies
+  community.general.npm:
+    path: /opt/mywebapp
+  become_user: app
+
+- name: Create config directory
+  ansible.builtin.file:
+    path: /etc/mywebapp
+    state: directory
+    owner: app
+    group: app
+    mode: "0755"
+
+- name: Deploy application config
+  ansible.builtin.template:
+    src: config.json.j2
+    dest: /etc/mywebapp/config.json
+    owner: app
+    group: app
+    mode: "0640"
+  notify: Restart mywebapp
+
+- name: Deploy systemd service
+  ansible.builtin.template:
+    src: mywebapp.service.j2
+    dest: /etc/systemd/system/mywebapp.service
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart mywebapp
+
+- name: Enable and start mywebapp
+  ansible.builtin.systemd:
+    name: mywebapp
+    state: started
+    enabled: true
+    daemon_reload: true
+
+- name: Create student user
+  ansible.builtin.user:
+    name: student
+    shell: /bin/bash
+    create_home: true
+
+- name: Create gradebook file
+  ansible.builtin.copy:
+    dest: /home/student/gradebook
+    content: "13"
+    owner: student
+    group: student
+    mode: "0644"

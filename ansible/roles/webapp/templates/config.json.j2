@@ -1,0 +1,11 @@
+{
+  "port": 8000,
+  "host": "127.0.0.1",
+  "db": {
+    "user": "student",
+    "host": "{{ hostvars[groups['db'][0]]['ansible_host'] }}",
+    "database": "tasktracker",
+    "password": "yourpassword",
+    "port": 5432
+  }
+}
