@@ -111,8 +111,10 @@ resource "libvirt_domain" "worker" {
   vcpu   = 2
 
   os = {
-    type      = "hvm"
-    type_arch = "aarch64"
+    type         = "hvm"
+    type_arch    = "aarch64"
+    type_machine = "virt"
+    firmware     = "efi"
   }
 
   devices = {
@@ -173,8 +175,10 @@ resource "libvirt_domain" "db" {
   vcpu   = 2
 
   os = {
-    type      = "hvm"
-    type_arch = "aarch64"
+    type         = "hvm"
+    type_arch    = "aarch64"
+    type_machine = "virt"
+    firmware     = "efi"
   }
 
   devices = {
