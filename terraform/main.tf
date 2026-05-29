@@ -120,6 +120,10 @@ resource "libvirt_domain" "worker" {
   devices = {
     disks = [
       {
+        driver = {
+          name = "qemu"
+          type = "qcow2"
+        }
         target = {
           dev = "vda"
           bus = "virtio"
@@ -133,6 +137,10 @@ resource "libvirt_domain" "worker" {
       },
       {
         device = "cdrom"
+        driver = {
+          name = "qemu"
+          type = "raw"
+        }
         target = {
           dev = "sda"
           bus = "scsi"
@@ -184,6 +192,10 @@ resource "libvirt_domain" "db" {
   devices = {
     disks = [
       {
+        driver = {
+          name = "qemu"
+          type = "qcow2"
+        }
         target = {
           dev = "vda"
           bus = "virtio"
@@ -197,6 +209,10 @@ resource "libvirt_domain" "db" {
       },
       {
         device = "cdrom"
+        driver = {
+          name = "qemu"
+          type = "raw"
+        }
         target = {
           dev = "sda"
           bus = "scsi"
